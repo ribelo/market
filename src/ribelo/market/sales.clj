@@ -6,7 +6,7 @@
    [taoensso.encore :as e]
    [net.cgrand.xforms.io :as xio]))
 
-(defn read-file [file-path & {:keys [encoding] :or {encoding "utf-8"}}]
+(defn read-file [file-path]
   (when (.exists (io/as-file file-path))
     (into []
           (comp (map #(str/split % #";"))
@@ -52,7 +52,7 @@
                           :sales/net-profit         net-profit
                           :sales/margin             margin
                           :sales/receipts           receipts}))))
-          (xio/lines-in (io/reader file-path :encoding encoding)))))
+          (xio/lines-in (io/reader file-path :encoding "cp1250")))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
   (let [begin-date (cond-> begin-date (not (instance? java.time.LocalDate begin-date)) (jt/local-date))
