@@ -18,23 +18,30 @@
                            qty                5
                            purchase-net-value 6
                            sell-gross-value   8
+                           vat                9
                            category-id        11}]
                        (let [purchase-net-value (Double/parseDouble purchase-net-value)
                              sell-gross-value   (Double/parseDouble sell-gross-value)
                              qty                (Double/parseDouble qty)
                              purchase-net-price (e/round2 (/ purchase-net-value qty))
-                             sell-gross-price   (e/round2 (/ sell-gross-value qty))]
+                             sell-gross-price   (e/round2 (/ sell-gross-value qty))
+                             vat                (e/round2 (/ (Double/parseDouble vat) 100.0))
+                             sell-net-price     (e/round2 (/ sell-gross-price (+ 1.0 vat)))
+                             sell-net-value     (e/round2 (* sell-gross-price qty))]
                          {:market/id                (str/lower-case market-id)
                           :stock/date               (jt/local-date date)
                           :product/id               id
                           :product/ean              ean
                           :product/sap              sap
-                          :product/qty              qty
+                          :stock/qty                qty
+                          :product/vat              vat
                           :product/category-id      category-id
                           :stock/purchase-net-value purchase-net-value
                           :stock/purchase-net-price purchase-net-price
                           :stock/sell-gross-value   sell-gross-value
-                          :stock/sell-gross-price   sell-gross-price}))))
+                          :stock/sell-gross-price   sell-gross-price
+                          :stock/sell-net-price     sell-net-price
+                          :stock/sell-net-value     sell-net-value}))))
           (xio/lines-in (io/reader file-path :encoding "cp1250")))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
@@ -53,8 +60,3 @@
                           file-path))
                   (filter #(.exists (io/as-file %)))
                   (mapcat read-file))))))
-
-(read-files {:market-id "f01450"
-             :begin-date "2019-01-01"
-             :end-date   "2019-06-01"
-             :data-path  "/home/ribelo/s3-dane"})
