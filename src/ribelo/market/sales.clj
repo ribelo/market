@@ -17,7 +17,7 @@
                            id                 4
                            name               5
                            qty                9
-                           purchase-net-value 19
+                           purchase-net-value 10
                            sell-net-value     11
                            sell-gross-value   12
                            net-profit         13
@@ -31,7 +31,7 @@
                              sell-gross-value   (Double/parseDouble sell-gross-value)
                              net-profit         (Double/parseDouble net-profit)
                              margin             (e/round2 (/ (Double/parseDouble margin) 10.0))
-                             receipts           (e/catching (Long/parseLong receipts) _ 0.0)
+                             receipts           (or (e/as-?float receipts) 0.0)
                              purchase-net-price (e/round2 (/ purchase-net-value qty))
                              sell-net-price     (e/round2 (/ sell-net-value qty))
                              sell-gross-price   (e/round2 (/ sell-gross-value qty))]
@@ -70,8 +70,3 @@
                         file-path))
                 (filter #(.exists (io/as-file %)))
                 (mapcat read-file))))))
-
-(read-files {:market-id  "f01450"
-             :begin-date "2019-01-01"
-             :end-date   "2019-06-01"
-             :data-path "/home/ribelo/s3-dane"})
