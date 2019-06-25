@@ -59,8 +59,8 @@
                          {:market/id                   (str/lower-case market-id)
                           :document/posting-date       (jt/local-date posting-date)
                           :document/date               (when (seq date) (jt/local-date date))
-                          :document/document-id        (str/lower-case doc-id)
-                          :document/market-document-id (str/lower-case market-doc-id)
+                          :document/id                 (str/lower-case doc-id)
+                          :document/id2                (str/lower-case market-doc-id)
                           :product/sap                 sap
                           :product/id                  product-id
                           :product/name                (str/lower-case product-name)
@@ -71,7 +71,7 @@
                           :document/purchase-net-price purchase-net-price
                           :document/sell-gross-price   sell-gross-price
                           :document/contractor         (translate-contractor (str/lower-case contractor))
-                          :document/document-type      (doc-id->doc-type (str/lower-case doc-id))}))))
+                          :document/document-type      (doc-id->doc-type (str/lower-case market-doc-id))}))))
           (xio/lines-in (io/reader file-path :encoding "cp1250")))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
