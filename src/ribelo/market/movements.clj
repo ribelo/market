@@ -7,16 +7,17 @@
    [net.cgrand.xforms :as x]
    [net.cgrand.xforms.io :as xio]))
 
-(def translate-contractor
-  {"centralny1" "cg"
-   "magazyncg"  "cg"
-   "magazync"   "cg"
-   "magazyn c"  "cg"
-   "sklep4"     "f01752"
-   "sklep3"     "f01450"
-   "sklep1"     "f01451"
-   "sklep nr 1" "f01451"
-   "ecsa"       "ecsa"})
+(defn translate-contractor [s]
+  (let [m {"centralny1" "cg"
+           "magazyncg"  "cg"
+           "magazync"   "cg"
+           "magazyn c"  "cg"
+           "sklep4"     "f01752"
+           "sklep3"     "f01450"
+           "sklep1"     "f01451"
+           "sklep nr 1" "f01451"
+           "ecsa"       "ecsa"}]
+    (get m s s)))
 
 (defn doc-id->doc-type [s]
   (cond
@@ -40,8 +41,8 @@
                 (map (fn [{market-id          0
                            posting-date       2
                            date               3
-                           doc-id             6
-                           market-doc-id      7
+                           market-doc-id      6
+                           doc-id             7
                            sap                10
                            product-id         11
                            product-name       12
@@ -55,22 +56,22 @@
                              qty'                (Double/parseDouble qty)
                              purchase-net-price  (e/round2 (/ purchase-net-value' qty'))
                              sell-gross-price    (e/round2 (/ sell-gross-value' qty'))]
-                         {:market-id          (str/lower-case market-id)
-                          :posting-date       (jt/local-date posting-date)
-                          :date               (when (seq date) (jt/local-date date))
-                          :doc-id             (str/lower-case doc-id)
-                          :market-doc-id      (str/lower-case market-doc-id)
-                          :sap                sap
-                          :product-id         product-id
-                          :product-name       (str/lower-case product-name)
-                          :ean                ean
-                          :qty                (Double/parseDouble qty)
-                          :purchase-net-value purchase-net-value'
-                          :sell-gross-value   sell-gross-value'
-                          :purchase-net-price purchase-net-price
-                          :sell-gross-price   sell-gross-price
-                          :contractor         (translate-contractor (str/lower-case contractor))
-                          :doc-type           (doc-id->doc-type (str/lower-case doc-id))}))))
+                         {:market/id                   (str/lower-case market-id)
+                          :document/posting-date       (jt/local-date posting-date)
+                          :document/date               (when (seq date) (jt/local-date date))
+                          :document/document-id        (str/lower-case doc-id)
+                          :document/market-document-id (str/lower-case market-doc-id)
+                          :product/sap                 sap
+                          :product/id                  product-id
+                          :product/name                (str/lower-case product-name)
+                          :product/ean                 ean
+                          :document/qty                (Double/parseDouble qty)
+                          :document/purchase-net-value purchase-net-value'
+                          :document/sell-gross-value   sell-gross-value'
+                          :document/purchase-net-price purchase-net-price
+                          :document/sell-gross-price   sell-gross-price
+                          :document/contractor         (translate-contractor (str/lower-case contractor))
+                          :document/document-type      (doc-id->doc-type (str/lower-case doc-id))}))))
           (xio/lines-in (io/reader file-path :encoding "cp1250")))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
