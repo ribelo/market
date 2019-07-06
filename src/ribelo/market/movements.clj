@@ -15,21 +15,20 @@
            "sklep4"     "f01752"
            "sklep3"     "f01450"
            "sklep1"     "f01451"
-           "sklep nr 1" "f01451"
-           "ecsa"       "ecsa"}]
+           "sklep nr 1" "f01451"}]
     (get m s s)))
 
 (defn doc-id->doc-type [s]
   (cond
-    (str/starts-with? s "mw")  :dispatch
-    (str/starts-with? s "pk")  :corection
-    (str/starts-with? s "kmp") :corection
-    (str/starts-with? s "po")  :delivery
-    (str/starts-with? s "pz")  :delivery
-    (str/starts-with? s "wo")  :dispatch
-    (str/starts-with? s "mp")  :delivery
+    (str/starts-with? s "mw")  :movements/out
+    (str/starts-with? s "pk")  :corection/undefined
+    (str/starts-with? s "kmp") :corection/undefined
+    (str/starts-with? s "po")  :package/in
+    (str/starts-with? s "pz")  :purchase/slip
+    (str/starts-with? s "wo")  :package/out
+    (str/starts-with? s "mp")  :movements/in
     ;; (str/starts-with? s "pp")  :delivery
-    (str/starts-with? s "wz")  :dispatch
+    (str/starts-with? s "wz")  :sales/slip
     ;; (str/starts-with? s "km")
     :else                      :unknown))
 
