@@ -16,7 +16,7 @@
              :receipt/type 3
              :receipt/sell-gross-value 4}
     :parse {:market/id str/lower-case
-            :receipt/type #(case % "G" :cash "K" :card)
+            :receipt/type #(case % "G" :cash "K" :card "B" :bond)
             :receipt/sell-gross-value e/as-?float}}))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
