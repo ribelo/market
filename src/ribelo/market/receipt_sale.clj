@@ -22,6 +22,7 @@
                   :receipt/sell-net-value     6
                   :receipt/sell-gross-value   7
                   :cash/id                    9
+                  :receipt/id                 10
                   :receipt/hour               13
                   :cashier/id                 11
                   :category/id                19}
@@ -36,12 +37,15 @@
        (map (fn [{:keys [product/qty
                          receipt/purchase-net-value
                          receipt/sell-net-value
-                         receipt/sell-gross-value]
+                         receipt/sell-gross-value
+                         receipt/id]
                   :as   m}]
-              (assoc m
-                     :receipt/purchase-net-price (math/round 2 (/ purchase-net-value qty))
-                     :receipt/sell-net-price     (math/round 2 (/ sell-net-value qty))
-                     :receipt/sell-gross-price   (math/round 2 (/ sell-gross-value qty)))))))
+              (let [date (jt/local-date "yyMMdd" (subs id 0 6))]
+                (assoc m
+                       :receipt/purchase-net-price (math/round 2 (/ purchase-net-value qty))
+                       :receipt/sell-net-price     (math/round 2 (/ sell-net-value qty))
+                       :receipt/sell-gross-price   (math/round 2 (/ sell-gross-value qty))
+                       :receipt/date               date))))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
   (let [begin-date (cond-> begin-date (not (instance? java.time.LocalDate begin-date)) (jt/local-date))
