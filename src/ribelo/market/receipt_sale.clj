@@ -53,7 +53,7 @@
                  (comp
                   (map #(let [date-str (jt/format "yyyy_MM_dd" %)
                               file-name (str (str/upper-case market-id)
-                                             "_ReceiptPayment_"
+                                             "_ReceiptSale_"
                                              date-str)
                               file-path (e/path data-path file-name)]
                           file-path))
