@@ -54,8 +54,7 @@
                        16 [:dc.movement.product/qty :double]
                        17 [:dc.movement.product/purchase-net-value :double]
                        19 [:dc.movement.product/sell-gross-value :double]
-                       22 [:dc.movement/contractor str/lower-case]
-                       }})
+                       22 [:dc.movement/contractor str/lower-case]}})
          (dz/set :dc.movement.product/purchase-net-price [(comp math/round2 /)
                                                           :dc.movement.product/purchase-net-value
                                                           :dc.movement.product/qty])
@@ -72,7 +71,7 @@
     (reduce
       (fn [acc dt]
         (let [date-str  (jt/format "yyyy_MM_dd" dt)
-              file-name (str (str/upper-case market-id)
+              file-name (str (str/upper-case (name market-id))
                              "_StockMovement_"
                              date-str)
               file-path (e/path data-path file-name)
