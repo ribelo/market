@@ -31,15 +31,18 @@
     (m/re #"^pz.*")  :purchase/slip
     (m/re #"^wo.*")  :package/out
     (m/re #"^mp.*")  :movements/in
-    (m/re #"^pp.*")    :movements/discount
+    (m/re #"^pp.*")  :movements/discount
     (m/re #"^wz.*")  :sales/slip
+    (m/re #"^pl.*")  :movements/liquidation
+    (m/re #"^pi.*")  :movements/inventory
+    nil              :movement/undefined
     ;; (m/re "&km")
     _                (throw (ex-info "bad doc id" {:s s}))))
 
 (defn read-file [file-path]
   (when (.exists (io/as-file file-path))
     (=>> (dz.io/read-csv
-           "/home/ribelo/s4-dane/F01752_StockMovement_2020_07_01"
+           file-path
            {:sep      ";"
             :encoding "cp1250"
             :header   {0  [:dc.movement/market-id str/lower-case]
@@ -55,19 +58,24 @@
                        17 [:dc.movement.product/purchase-net-value :double]
                        19 [:dc.movement.product/sell-gross-value :double]
                        22 [:dc.movement/contractor str/lower-case]}})
-         (dz/set :dc.movement.product/purchase-net-price [(comp math/round2 /)
-                                                          :dc.movement.product/purchase-net-value
-                                                          :dc.movement.product/qty])
-         (dz/set :dc.movement.product/sell-gross-value [(comp math/round2 /)
-                                                        :dc.movement.product/sell-gross-value
-                                                        :dc.movement.product/qty])
+         (filter identity)
+         (map (fn [m] (e/if-lets [qty   (-> m :dc.movement.product/qty e/as-?pos-float)
+                                  value (-> m :dc.movement.product/purchase-net-value e/as-?pos-float)
+                                  price (e/round2 (/ value qty))]
+                        (assoc m :dc.movement.product/purchase-net-price price)
+                        m)))
+         (map (fn [m] (e/if-lets [qty   (-> m :dc.movement.product/qty e/as-?pos-float)
+                                  value (-> m :dc.movement.product/sell-gross-value e/as-?pos-float)
+                                  price (e/round2 (/ value qty))]
+                        (assoc m :dc.movement.product/sell-gross-price price)
+                        m)))
          (dz/set :dc.movement.document/type [doc-id->doc-type :dc.movement/market-doc-id]))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
   (let [begin-date (cond-> begin-date (not (instance? java.time.LocalDate begin-date)) (jt/local-date))
         end-date   (cond-> end-date (not (instance? java.time.LocalDate end-date)) (jt/local-date))
-        dates      (take-while #(jt/before? % (jt/plus end-date (jt/months 1)))
-                               (jt/iterate jt/plus begin-date (jt/months 1)))]
+        dates      (take-while #(jt/before? % (jt/plus end-date (jt/days 1)))
+                               (jt/iterate jt/plus begin-date (jt/days 1)))]
     (reduce
       (fn [acc dt]
         (let [date-str  (jt/format "yyyy_MM_dd" dt)
@@ -76,6 +84,6 @@
                              date-str)
               file-path (e/path data-path file-name)
               data      (read-file file-path)]
-          (into acc data)))
+          (if data (into acc data) acc)))
       []
       dates)))
