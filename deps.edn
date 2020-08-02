@@ -1,7 +1,7 @@
 {:paths ["resources" "src"]
- :deps  {org.clojure/tools.cli {:mvn/version "0.4.2"}
-         com.taoensso/encore   {:mvn/version "2.115.0"}
-         net.cgrand/xforms     {:mvn/version "0.19.0"}
+ :deps  {com.taoensso/encore   {:mvn/version "2.122.0"}
+         net.cgrand/xforms     {:mvn/version "0.19.2"}
          clojure.java-time     {:mvn/version "0.3.2"}
-         ribelo/wombat         {:git/url "https://github.com/ribelo/wombat"
-                                :sha     "b8afee5947e62d607ad6e7248afde166b056a318"}}}
+         meander/epsilon       {:mvn/version "0.0.480"}
+         hesse/danzig          {:git/url "https://github.com/ribelo/danzig"
+                                :sha     "57f28fbe219e72c345837146ff68d34a6982307c"}}}

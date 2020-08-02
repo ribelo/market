@@ -4,88 +4,79 @@
    [java-time :as jt]
    [clojure.string :as str]
    [taoensso.encore :as e]
-   [net.cgrand.xforms :as x]
-   [net.cgrand.xforms.io :as xio]))
+   [meander.epsilon :as m]
+   [java-time :as jt]
+   [hanse.danzig :as dz :refer [=>>]]
+   [hanse.danzig.io :as dz.io]
+   [hanse.rostock.math :as math]))
 
 (defn translate-contractor [s]
-  (let [m {"centralny1" "cg"
-           "magazyncg"  "cg"
-           "magazync"   "cg"
-           "magazyn c"  "cg"
-           "sklep4"     "f01752"
-           "sklep3"     "f01450"
-           "sklep1"     "f01451"
-           "sklep nr 1" "f01451"}]
-    (get m s s)))
+  (m/match s
+    "centralny1" "cg"
+    "magazyncg"  "cg"
+    "magazync"   "cg"
+    "magazyn c"  "cg"
+    "sklep4"     "f01752"
+    "sklep3"     "f01450"
+    "sklep1"     "f01451"
+    "sklep nr 1" "f01451"
+    _            (throw (ex-info "bad contractor" {:s s}))))
 
 (defn doc-id->doc-type [s]
-  (cond
-    (str/starts-with? s "mw")  :movements/out
-    (str/starts-with? s "pk")  :corection/undefined
-    (str/starts-with? s "kmp") :corection/undefined
-    (str/starts-with? s "po")  :package/in
-    (str/starts-with? s "pz")  :purchase/slip
-    (str/starts-with? s "wo")  :package/out
-    (str/starts-with? s "mp")  :movements/in
-    ;; (str/starts-with? s "pp")  :delivery
-    (str/starts-with? s "wz")  :sales/slip
-    ;; (str/starts-with? s "km")
-    :else                      :unknown))
-
+  (m/match s
+    (m/re #"^mw.*")  :movements/out
+    (m/re #"^pk.*")  :corection/undefined
+    (m/re #"^kmp.*") :corection/undefined
+    (m/re #"^po.*")  :package/in
+    (m/re #"^pz.*")  :purchase/slip
+    (m/re #"^wo.*")  :package/out
+    (m/re #"^mp.*")  :movements/in
+    (m/re #"^pp.*")    :movements/discount
+    (m/re #"^wz.*")  :sales/slip
+    ;; (m/re "&km")
+    _                (throw (ex-info "bad doc id" {:s s}))))
 
 (defn read-file [file-path]
   (when (.exists (io/as-file file-path))
-    (into []
-          (comp (map #(str/split % #";"))
-                (map (fn [{market-id          0
-                           posting-date       2
-                           date               3
-                           market-doc-id      6
-                           doc-id             7
-                           sap                10
-                           product-id         11
-                           product-name       12
-                           ean                15
-                           qty                16
-                           purchase-net-value 17
-                           sell-gross-value   19
-                           contractor         22}]
-                       (let [purchase-net-value' (Double/parseDouble purchase-net-value)
-                             sell-gross-value'   (Double/parseDouble sell-gross-value)
-                             qty'                (Double/parseDouble qty)
-                             purchase-net-price  (e/round2 (/ purchase-net-value' qty'))
-                             sell-gross-price    (e/round2 (/ sell-gross-value' qty'))]
-                         {:market/id                   (str/lower-case market-id)
-                          :document/posting-date       (jt/local-date posting-date)
-                          :document/date               (when (seq date) (jt/local-date date))
-                          :document/id                 (str/lower-case doc-id)
-                          :document/id2                (str/lower-case market-doc-id)
-                          :product/sap                 sap
-                          :product/id                  product-id
-                          :product/name                (str/lower-case product-name)
-                          :product/ean                 ean
-                          :document/qty                (Double/parseDouble qty)
-                          :document/purchase-net-value purchase-net-value'
-                          :document/sell-gross-value   sell-gross-value'
-                          :document/purchase-net-price purchase-net-price
-                          :document/sell-gross-price   sell-gross-price
-                          :document/contractor         (translate-contractor (str/lower-case contractor))
-                          :document/document-type      (doc-id->doc-type (str/lower-case market-doc-id))}))))
-          (xio/lines-in (io/reader file-path :encoding "cp1250")))))
+    (=>> (dz.io/read-csv
+           "/home/ribelo/s4-dane/F01752_StockMovement_2020_07_01"
+           {:sep      ";"
+            :encoding "cp1250"
+            :header   {0  [:dc.movement/market-id str/lower-case]
+                       2  [:dc.movement/posting-date :date]
+                       3  [:dc.movement/date #(e/catching (jt/local-date %))]
+                       6  [:dc.movement/market-doc-id str/lower-case]
+                       7  [:dc.movement/document-id str/lower-case]
+                       10 [:dc.movement.product/sap str/lower-case]
+                       11 [:dc.movement.product/id str/lower-case]
+                       12 [:dc.movement.product/name str/lower-case]
+                       15 :dc.movement.product/ean
+                       16 [:dc.movement.product/qty :double]
+                       17 [:dc.movement.product/purchase-net-value :double]
+                       19 [:dc.movement.product/sell-gross-value :double]
+                       22 [:dc.movement/contractor str/lower-case]
+                       }})
+         (dz/set :dc.movement.product/purchase-net-price [(comp math/round2 /)
+                                                          :dc.movement.product/purchase-net-value
+                                                          :dc.movement.product/qty])
+         (dz/set :dc.movement.product/sell-gross-value [(comp math/round2 /)
+                                                        :dc.movement.product/sell-gross-value
+                                                        :dc.movement.product/qty])
+         (dz/set :dc.movement.document/type [doc-id->doc-type :dc.movement/market-doc-id]))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
   (let [begin-date (cond-> begin-date (not (instance? java.time.LocalDate begin-date)) (jt/local-date))
         end-date   (cond-> end-date (not (instance? java.time.LocalDate end-date)) (jt/local-date))
-        dates (take-while #(jt/before? % (jt/plus end-date (jt/days 1)))
-                          (jt/iterate jt/plus begin-date (jt/days 1)))]
-    (->> dates
-         (x/into []
-                 (comp
-                  (map #(let [date-str (jt/format "yyyy_MM_dd" %)
-                              file-name (str (str/upper-case market-id)
-                                             "_StockMovement_"
-                                             date-str)
-                              file-path (e/path data-path file-name)]
-                          file-path))
-                  (filter #(.exists (io/as-file %)))
-                  (mapcat read-file))))))
+        dates      (take-while #(jt/before? % (jt/plus end-date (jt/months 1)))
+                               (jt/iterate jt/plus begin-date (jt/months 1)))]
+    (reduce
+      (fn [acc dt]
+        (let [date-str  (jt/format "yyyy_MM_dd" dt)
+              file-name (str (str/upper-case market-id)
+                             "_StockMovement_"
+                             date-str)
+              file-path (e/path data-path file-name)
+              data      (read-file file-path)]
+          (into acc data)))
+      []
+      dates)))
