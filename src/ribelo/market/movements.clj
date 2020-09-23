@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [taoensso.encore :as e]
    [meander.epsilon :as m]
-   [java-time :as jt]
    [hanse.danzig :as dz :refer [=>>]]
    [hanse.danzig.io :as dz.io]
    [hanse.rostock.math :as math]))

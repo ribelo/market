@@ -4,69 +4,51 @@
    [java-time :as jt]
    [clojure.string :as str]
    [taoensso.encore :as e]
-   [net.cgrand.xforms.io :as xio]))
+   [meander.epsilon :as m]
+   [hanse.danzig :as dz :refer [=>>]]
+   [hanse.danzig.io :as dz.io]
+   [hanse.rostock.math :as math]))
 
 (defn read-file [file-path]
   (when (.exists (io/as-file file-path))
-    (into []
-          (comp (map #(str/split % #";"))
-                (map (fn [{market-id          0
-                           date               1
-                           ean                2
-                           sap                3
-                           id                 4
-                           name               5
-                           qty                9
-                           purchase-net-value 10
-                           sell-net-value     11
-                           sell-gross-value   12
-                           net-profit         13
-                           margin             14
-                           receipts           15
-                           category-id        22}]
-                       (let [name               (str/lower-case name)
-                             qty                (Double/parseDouble qty)
-                             purchase-net-value (Double/parseDouble purchase-net-value)
-                             sell-net-value     (Double/parseDouble sell-net-value)
-                             sell-gross-value   (Double/parseDouble sell-gross-value)
-                             net-profit         (Double/parseDouble net-profit)
-                             margin             (e/round2 (/ (Double/parseDouble margin) 10.0))
-                             receipts           (or (e/as-?float receipts) 0.0)
-                             purchase-net-price (e/round2 (/ purchase-net-value qty))
-                             sell-net-price     (e/round2 (/ sell-net-value qty))
-                             sell-gross-price   (e/round2 (/ sell-gross-value qty))]
-                         {:market/id                (str/lower-case market-id)
-                          :sales/date               (jt/local-date date)
-                          :product/name             name
-                          :product/id               id
-                          :product/ean              ean
-                          :product/sap              sap
-                          :product/qty              qty
-                          :product/category-id      category-id
-                          :sales/purchase-net-value purchase-net-value
-                          :sales/purchase-net-price purchase-net-price
-                          :sales/sell-net-value     sell-net-value
-                          :sales/sell-net-price     sell-net-price
-                          :sales/sell-gross-value   sell-gross-value
-                          :sales/sell-gross-price   sell-gross-price
-                          :sales/net-profit         net-profit
-                          :sales/margin             margin
-                          :sales/receipts           receipts}))))
-          (xio/lines-in (io/reader file-path :encoding "cp1250")))))
+    (=>> (dz.io/read-csv
+           file-path
+           {:sep      ";"
+            :encoding "cp1250"
+            :header   {0  [:dc.sales/market-id str/lower-case]
+                       1  [:dc.sales/date :date]
+                       2  [:dc.sales.product/ean]
+                       5  [:dc.sales.product/name str/lower-case]
+                       9  [:dc.sales.product/qty :double]
+                       10 [:dc.sales.product/purchase-net-value :double]
+                       11 [:dc.sales.product/sell-net-value :double]
+                       12 [:dc.sales.product/sell-gross-value :double]
+                       13 [:dc.sales.product/net-profit :double]
+                       14 [:dc.sales.product/margin #(-> % (e/parse-float) (* 0.01) (e/round2))]
+                       15 [:dc.sales/receipts :long]
+                       22 [:dc.sales.product/category str/lower-case]}})
+         (dz/set :dc.sales.product/sell-net-price
+                 (fn [{:keys [dc.sales.product/sell-net-value
+                             dc.sales.product/qty]}]
+                   (when (pos? qty) (math/round2 (/ sell-net-value qty))))))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
   (let [begin-date (cond-> begin-date (not (instance? java.time.LocalDate begin-date)) (jt/local-date))
         end-date   (cond-> end-date (not (instance? java.time.LocalDate end-date)) (jt/local-date))
         dates      (take-while #(jt/before? % (jt/plus end-date (jt/days 1)))
-                               (jt/iterate jt/plus begin-date (jt/days 1)))]
-    (->> dates
-         (into []
-               (comp
-                (map #(let [date-str (jt/format "yyyy_MM_dd" %)
-                            file-name (str (str/upper-case market-id)
-                                           "_StoreSale_"
-                                           date-str)
-                            file-path (e/path data-path file-name)]
-                        file-path))
-                (filter #(.exists (io/as-file %)))
-                (mapcat read-file))))))
+                               (jt/iterate jt/plus begin-date (jt/days 1)))
+        files      (=>> (file-seq (io/as-file data-path))
+                        (remove #(.isDirectory %))
+                        (map #(.getName %))
+                        #{})]
+    (=>> dates
+         (map (fn [date]
+                (let [date-str  (jt/format "yyyy_MM_dd" date)
+                      file-name (str (str/upper-case market-id)
+                                     "_StoreSale_"
+                                     date-str)
+                      find-file (fn [s] (=>> files (filter #(re-find (re-pattern s) %)) .))
+                      file-path (some->> (find-file file-name) (e/path data-path))]
+                  file-path)))
+         (remove nil?)
+         (mapcat read-file))))
