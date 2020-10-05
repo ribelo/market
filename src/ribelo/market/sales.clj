@@ -18,6 +18,7 @@
             :header   {0  [:dc.sales/market-id str/lower-case]
                        1  [:dc.sales/date :date]
                        2  [:dc.sales.product/ean]
+                       4  [:dc.sales.product/id]
                        5  [:dc.sales.product/name str/lower-case]
                        9  [:dc.sales.product/qty :double]
                        10 [:dc.sales.product/purchase-net-value :double]
@@ -29,7 +30,7 @@
                        22 [:dc.sales.product/category str/lower-case]}})
          (dz/set :dc.sales.product/sell-net-price
                  (fn [{:keys [dc.sales.product/sell-net-value
-                             dc.sales.product/qty]}]
+                              dc.sales.product/qty]}]
                    (when (pos? qty) (math/round2 (/ sell-net-value qty))))))))
 
 (defn read-files [{:keys [market-id begin-date end-date data-path]}]
